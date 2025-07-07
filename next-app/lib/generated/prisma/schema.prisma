@@ -15,15 +15,16 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String     @id
   name          String
-  email         String    @unique
+  email         String     @unique
   emailVerified Boolean
   image         String?
   createdAt     DateTime
   updatedAt     DateTime
   sessions      Session[]
   accounts      Account[]
+  documents     Document[]
 
   @@map("user")
 }
@@ -70,4 +71,18 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileType  String
+  fileSize  Int
+  fileKey   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("document")
 }
