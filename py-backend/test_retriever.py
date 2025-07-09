@@ -15,7 +15,7 @@ client = QdrantClient(
 )
 
 
-query = "What are the main components of the Transformer architecture as illustrated in the diagram?"
+query = "waht does pdflatex mean?"
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 query_vector = embeddings.embed_query(query)
 
