@@ -9,6 +9,15 @@ from qdrant_client import QdrantClient
 from dotenv import load_dotenv
 from langchain_community.embeddings import OpenAIEmbeddings
 from qdrant_client.models import VectorParams, Distance
+import boto3
+from botocore.client import Config
+import httpx
+
+"""
+remaining tasks:
+delete the file from content folder after processing
+"""
+
 load_dotenv()
 llm = ChatOpenAI(
     model="gpt-4o-mini",
@@ -20,175 +29,206 @@ client = QdrantClient(
         api_key=os.getenv("QDRANT_API_KEY"),
     )
 
+async def get_file(file_key: str,expires_in: int = 60):
+    """"get the file from cloudflare R2 via presigned url"""
+    os.makedirs("./content", exist_ok=True)
+    session = boto3.session.Session()
+    r2 = session.client(
+        service_name='s3',
+        region_name='auto',  # Cloudflare R2 uses 'auto'
+        endpoint_url=os.environ['R2_ENDPOINT'],  # e.g. "https://<account_id>.r2.cloudflarestorage.com"
+        aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'],
+        config=Config(signature_version='s3v4'),
+    )
+    signed_url = r2.generate_presigned_url(
+        'get_object',
+        Params={
+            'Bucket': os.environ['R2_BUCKET'],
+            'Key': file_key,
+        },
+        ExpiresIn=expires_in
+    )
+    async with httpx.AsyncClient() as client:
+        response = await client.get(signed_url)
+        filename = f"{file_key}.pdf"
+        output_path = f"./content/{filename}"
+    if response.status_code == 200:
+        with open(output_path,"wb") as f:
+            f.write(response.content)
+        return filename
+    else:
+        raise Exception(f"Failed to download file: {response.status_code} - {response.text}")
 
-output_path = "./content/"
-file_path = output_path + 'attention.pdf'
-chunks = partition_pdf(
-    filename=file_path,
-    infer_table_structure=True,            
-    strategy="hi_res",                     
+ 
 
-    extract_image_block_types=["Image"],  
-   
 
-    extract_image_block_to_payload=True,  
+def upsert_to_qdrant(filename: str):
+    output_path = "./content/"
+    file_path = output_path + filename
+    chunks = partition_pdf(
+        filename=file_path,
+        infer_table_structure=True,            
+        strategy="hi_res",                     
 
-    chunking_strategy="by_title",          
-    max_characters=10000,                 
-    combine_text_under_n_chars=2000,       
-    new_after_n_chars=6000,
-)
+        extract_image_block_types=["Image"],  
+    
 
-tables = []
-texts = []
+        extract_image_block_to_payload=True,  
 
-for chunk in chunks:
-    if "Table" in str(type(chunk)):
-        tables.append(chunk)
+        chunking_strategy="by_title",          
+        max_characters=10000,                 
+        combine_text_under_n_chars=2000,       
+        new_after_n_chars=6000,
+    )
 
-    if "CompositeElement" in str(type((chunk))):
-        texts.append(chunk)
+    tables = []
+    texts = []
 
-def get_images_base64(chunks):
-    images_b64 = []
     for chunk in chunks:
-        if "CompositeElement" in str(type(chunk)):
-            chunk_els = chunk.metadata.orig_elements
-            for el in chunk_els:
-                if "Image" in str(type(el)):
-                    images_b64.append(el.metadata.image_base64)
-    return images_b64
+        if "Table" in str(type(chunk)):
+            tables.append(chunk)
 
-images = get_images_base64(chunks)
+        if "CompositeElement" in str(type((chunk))):
+            texts.append(chunk)
 
-prompt_text = """
-You are an assistant tasked with summarizing tables and text.
-Give a concise summary of the table or text.
+    def get_images_base64(chunks):
+        images_b64 = []
+        for chunk in chunks:
+            if "CompositeElement" in str(type(chunk)):
+                chunk_els = chunk.metadata.orig_elements
+                for el in chunk_els:
+                    if "Image" in str(type(el)):
+                        images_b64.append(el.metadata.image_base64)
+        return images_b64
 
-Respond only with the summary, no additionnal comment.
-Do not start your message by saying "Here is a summary" or anything like that.
-Just give the summary as it is.
+    images = get_images_base64(chunks)
 
-Table or text chunk: {element}
+    prompt_text = """
+    You are an assistant tasked with summarizing tables and text.
+    Give a concise summary of the table or text.
 
-"""
-prompt = ChatPromptTemplate.from_template(prompt_text)
-summarize_chain = {"element": lambda x: x} | prompt | llm | StrOutputParser()
+    Respond only with the summary, no additionnal comment.
+    Do not start your message by saying "Here is a summary" or anything like that.
+    Just give the summary as it is.
 
-text_summaries = summarize_chain.batch(texts, {"max_concurrency": 3})
-tables_html = [table.metadata.text_as_html for table in tables]
-table_summaries = summarize_chain.batch(tables_html, {"max_concurrency": 3})
+    Table or text chunk: {element}
 
-prompt_template = """Describe the image in detail. For context,
-                  the image is part of a research paper explaining the transformers
-                  architecture. Be specific about graphs, such as bar plots."""
-messages = [
-    (
-        "user",
-        [
-            {"type": "text", "text": prompt_template},
-            {
-                "type": "image_url",
-                "image_url": {"url": "data:image/jpeg;base64,{image}"},
-            },
-        ],
+    """
+    prompt = ChatPromptTemplate.from_template(prompt_text)
+    summarize_chain = {"element": lambda x: x} | prompt | llm | StrOutputParser()
+
+    text_summaries = summarize_chain.batch(texts, {"max_concurrency": 3})
+    tables_html = [table.metadata.text_as_html for table in tables]
+    table_summaries = summarize_chain.batch(tables_html, {"max_concurrency": 3})
+
+    prompt_template = """Describe the image in detail. For context,
+                    the image is part of a research paper explaining the transformers
+                    architecture. Be specific about graphs, such as bar plots."""
+    messages = [
+        (
+            "user",
+            [
+                {"type": "text", "text": prompt_template},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "data:image/jpeg;base64,{image}"},
+                },
+            ],
+        )
+    ]
+
+    prompt = ChatPromptTemplate.from_messages(messages)
+
+    chain = prompt | llm | StrOutputParser()
+
+
+    image_summaries = chain.batch(images)
+
+
+    def embed(text):
+        """Embed the text using OpenAI embeddings."""
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+        return embeddings.embed_query(text)
+    points = []
+
+    for i, text_chunk in enumerate(texts):
+        summary = text_summaries[i]  
+        common_id = str(uuid4())
+
+        vector = embed(summary)  
+
+        point = PointStruct(
+            id=common_id,
+            vector=vector,
+            payload={
+                "common_id": common_id,
+                "summary": summary,
+                "full_text": text_chunk.text,
+                "user_id": "user-xyz",  
+                "page_num": text_chunk.metadata.page_number,
+                "doc_type": "text",
+            }
+        )
+
+        points.append(point)
+
+    for i, table_chunk in enumerate(tables):
+        summary = table_summaries[i]  
+        common_id = str(uuid4())
+
+        vector = embed(summary)  
+
+        point = PointStruct(
+            id=common_id,
+            vector=vector,
+            payload={
+                "common_id": common_id,
+                "summary": summary,
+                "full_text": table_chunk.text,
+                "user_id": "user-xyz",  
+                "page_num": table_chunk.metadata.page_number,
+                "doc_type": "text",
+            }
+        )
+
+        points.append(point)
+
+    for i, image_chunk in enumerate(images):
+        summary = image_summaries[i]  
+        common_id = str(uuid4())
+
+        vector = embed(summary)  
+
+        point = PointStruct(
+            id=common_id,
+            vector=vector,
+            payload={
+                "common_id": common_id,
+                "summary": summary,
+                "image_base64": image_chunk, 
+                "user_id": "user-xyz", 
+                "doc_type": "image",
+            }
+        )
+
+        points.append(point)
+
+
+
+    client.recreate_collection(  
+        collection_name="user_docs_collection",
+        vectors_config=VectorParams(
+            size=1536,  
+            distance=Distance.COSINE
+        ),
+        on_disk_payload=True  
     )
-]
-
-prompt = ChatPromptTemplate.from_messages(messages)
-
-chain = prompt | llm | StrOutputParser()
 
 
-image_summaries = chain.batch(images)
-
-
-def embed(text):
-    """Embed the text using OpenAI embeddings."""
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-    return embeddings.embed_query(text)
-points = []
-
-for i, text_chunk in enumerate(texts):
-    summary = text_summaries[i]  
-    common_id = str(uuid4())
-
-    vector = embed(summary)  
-
-    point = PointStruct(
-        id=common_id,
-        vector=vector,
-        payload={
-            "common_id": common_id,
-            "summary": summary,
-            "full_text": text_chunk.text,
-            "user_id": "user-xyz",  
-            "page_num": text_chunk.metadata.page_number,
-            "doc_type": "text",
-        }
-    )
-
-    points.append(point)
-
-for i, table_chunk in enumerate(tables):
-    summary = table_summaries[i]  
-    common_id = str(uuid4())
-
-    vector = embed(summary)  
-
-    point = PointStruct(
-        id=common_id,
-        vector=vector,
-        payload={
-            "common_id": common_id,
-            "summary": summary,
-            "full_text": table_chunk.text,
-            "user_id": "user-xyz",  
-            "page_num": table_chunk.metadata.page_number,
-            "doc_type": "text",
-        }
-    )
-
-    points.append(point)
-
-for i, image_chunk in enumerate(images):
-    summary = image_summaries[i]  
-    common_id = str(uuid4())
-
-    vector = embed(summary)  
-
-    point = PointStruct(
-        id=common_id,
-        vector=vector,
-        payload={
-            "common_id": common_id,
-            "summary": summary,
-            "image_base64": image_chunk, 
-            "user_id": "user-xyz", 
-            "doc_type": "image",
-        }
-    )
-
-    points.append(point)
+    client.upsert(collection_name="user_docs_collection", points=points)
+    return {"status": "success", "message": "Data upserted successfully."}
 
 
 
-client.recreate_collection(  
-    collection_name="user_docs_collection",
-    vectors_config=VectorParams(
-        size=1536,  
-        distance=Distance.COSINE
-    ),
-    on_disk_payload=True  
-)
-
-
-client.upsert(collection_name="user_docs_collection", points=points)
-
-
-if __name__ == "__main__":
-    print("Ingestion completed successfully.")
-    print(f"Processed {len(texts)} text chunks, {len(tables)} tables, and {len(images)} images.")
-    print(f"Summaries: {len(text_summaries)}, {len(table_summaries)}, {len(image_summaries)}")
-    print("Data has been upserted to Qdrant collection 'user_docs_collection'.")
 

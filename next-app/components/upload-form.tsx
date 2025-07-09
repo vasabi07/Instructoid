@@ -4,7 +4,12 @@ import {getSignedURL,saveDocument} from "@/app/create/actions";
 
 
 import { useEffect, useState } from "react";
-
+//consider saving to db after processing the file in backend
+//handle response from backend after processing the file
+//handle error cases in file upload and processing
+//show error messages to user in the form
+//show success message to user in the form
+//show loading state while file is being processed
 const UploadForm = () => {
     const [file,setFile] = useState<File | undefined>(undefined);
     const [url, setUrl] = useState<string | undefined>(undefined);
@@ -41,10 +46,25 @@ const UploadForm = () => {
         }
         
         const upload_to_db = await saveDocument(file_name, file_key, file.size, file.type);
-        if (upload_to_db) {
-            console.log("File uploaded successfully to R2 and saved to database:", upload_to_db);
+        if (upload_to_db && "fileKey" in upload_to_db) {
+            const key = upload_to_db.fileKey;
+            try {
+                const response = await fetch("http://0.0.0.0:8000/ingest", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        file_key: key})
+                });
+                if (!response.ok) {
+                    throw new Error("Failed to ingest file");
+                }
+            } catch (error) {
+                
+            }
         } else {
-            console.error("Failed to save file metadata to database");
+            console.error("Failed to save file metadata to database", upload_to_db);
         }
         setFile(undefined);
         setUrl(undefined);
