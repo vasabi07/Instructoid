@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from ingest import get_file, upsert_to_qdrant
+from ingest import upsert_to_qdrant
 from pydantic import BaseModel
-
+from utils.r2 import get_file
 app = FastAPI()
-
+from retriever import retriever
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -15,7 +15,7 @@ app.add_middleware(
 )
 
 class IngestRequest(BaseModel):
-    file_key: str  # URL of the file to be ingested
+    file_key: str  
     
 
 
@@ -38,7 +38,22 @@ async def ingest(request: IngestRequest):
     else:
         return {"error": "Failed to ingest the file."}
     
-
+@app.post("/chat")
+async def chat(query: str):
+    """Handles the chat query and returns the response."""
+    if not query:
+        return {"error": "Query is required."}
+    
+    
+    response = retriever(query)
+    
+    return {"response": response}
+@app.post("/create-video")
+async def create_video(query: str):
+    """Handles the video creation request."""
+    if not query:
+        return {"error": "Query is required."}
+    return {"message": "Video creation is not yet implemented.", "query": query}
 
 
 if __name__ == "__main__":

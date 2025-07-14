@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant FE as Next.js frontend
+    participant BE as Python FastAPI (CPU)
+    participant GPU as GPU Job (TTS + Manim)
+    participant R2 as Cloudflare R2
+
+    FE->>BE: Upload document
+    BE->>BE: Ingest to vector DB (RAG)
+    FE->>BE: Request video generation (topic prompt)
+    BE->>BE: Orchestrator agent runs → generate transcript
+    BE->>GPU: Fire GPU job with transcript + voice SE
+    GPU->>GPU: TTS + Manim + FFmpeg
+    GPU->>R2: Upload final video
+    GPU->>BE: Return video URL
+    BE->>FE: Save to DB + Return signed URL
+    FE->>FE: User can view/download video
+
+Today:
+    
+    transcription generation node the logic 
+    make the manim agent accept and transcript and may be pass user's prompt
+    
