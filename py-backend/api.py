@@ -3,8 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from ingest import upsert_to_qdrant
 from pydantic import BaseModel
 from utils.r2 import get_file
+from langchain_core.messages import HumanMessage
 app = FastAPI()
 from retriever import retriever
+from main import orchestrator_agent
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -53,7 +55,11 @@ async def create_video(query: str):
     """Handles the video creation request."""
     if not query:
         return {"error": "Query is required."}
-    return {"message": "Video creation is not yet implemented.", "query": query}
+    response = await orchestrator_agent.invoke([HumanMessage(content=query)])
+    return {"video_key": response.state.video_key, "message": "Video created successfully."}
+    
+
+
 
 
 if __name__ == "__main__":

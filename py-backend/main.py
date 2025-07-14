@@ -4,7 +4,6 @@ create a orchestrator agent here that gets users query and use tts node, pass th
 from langgraph.graph import MessagesState
 from retriever import retriever
 import openai
-import uuid
 import httpx
 import os
 from langgraph.graph import MessagesState, StateGraph, END
@@ -41,7 +40,7 @@ def TTS_node(state: State)-> State:
 async def  manim_node(state: State) -> State:
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            "http://localhost:8000/create-video",
+            os.environ.get("MANIM_ENDPOINT"),
             json={"query": state.transcription}
         )
         if response.status_code == 200:
@@ -95,7 +94,7 @@ def Stitching_node(state: State) -> State:
 
 async def upload_video_node(state: State) -> State:
     """upload the video to r2"""
-    # Upload final video to R2
+    
     result = await upload_video("final_video.mp4", state.final_video_data)
     state.video_key = result["file_key"]
     
