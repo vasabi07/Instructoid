@@ -26,6 +26,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   documents Document[]
+  videos        Video[]
   
 
   @@map("user")
@@ -87,4 +88,16 @@ model Document {
   updatedAt   DateTime @updatedAt
 
   @@map("document")
+}
+
+model Video {
+  id          String   @id @default(uuid())
+  query       String
+  videoUrl    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("video")
 }

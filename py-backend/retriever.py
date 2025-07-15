@@ -78,7 +78,12 @@ Target duration:
     return llm_better.invoke(transcription_prompt)
 
 if __name__ == "__main__":
-    query = "what is attention in transformers?"
+    query = "how to write a document?"
     response = retriever(query)
-    pprint.pprint(response)
+    pprint.pprint(response.content)
 
+
+"""
+need to create 2 prompts. 
+one for video generation and one for answering 
+"""
