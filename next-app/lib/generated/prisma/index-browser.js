@@ -177,6 +177,15 @@ exports.Prisma.DocumentScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.VideoScalarFieldEnum = {
+  id: 'id',
+  query: 'query',
+  videoUrl: 'videoUrl',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  userId: 'userId'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -198,7 +207,8 @@ exports.Prisma.ModelName = {
   Session: 'Session',
   Account: 'Account',
   Verification: 'Verification',
-  Document: 'Document'
+  Document: 'Document',
+  Video: 'Video'
 };
 
 /**

@@ -19,7 +19,8 @@ app.add_middleware(
 class IngestRequest(BaseModel):
     file_key: str  
     
-
+class Request(BaseModel):
+    query: str
 
 @app.get("/")
 async def root():
@@ -51,16 +52,19 @@ async def chat(query: str):
     
     return {"response": response}
 @app.post("/create-video")
-async def create_video(query: str):
+async def create_video(request: Request):
     """Handles the video creation request."""
-    if not query:
+    if not request.query:
         return {"error": "Query is required."}
-    response = await orchestrator_agent.invoke([HumanMessage(content=query)])
-    return {"video_key": response.state.video_key, "message": "Video created successfully."}
+    print(request.query)
+    initial_state = {
+        "query": request.query,
+        "messages": []  # Empty messages list for MessagesState
+    }
+    response = await orchestrator_agent.ainvoke(initial_state)
+    print(response["video_key"])
+    return {"video_key": response["video_key"], "message": "Video created successfully."}
     
-
-
-
 
 if __name__ == "__main__":
     import uvicorn

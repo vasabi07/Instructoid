@@ -20,83 +20,97 @@ class State(MessagesState):
 
 #retriever_node
 def retriever_node(state: State) -> State:
-    response = retriever(state.query)
-    state.transcription = response
+    response = retriever(state["query"])
+    state["transcription"] = response.content
+
     return state
 
 #transcription_node
 def TTS_node(state: State)-> State:
     response = openai.audio.speech.create(
         model= "tts-1-hd",
-        input=state.transcription,
+        input=state["transcription"],
         voice = "shimmer"
     )
     
     # Store audio as bytes
-    state.audio_data = response.content
+    state["audio_data"] = response.content
     return state
 
 #manim_node
 async def  manim_node(state: State) -> State:
-    async with httpx.AsyncClient() as client:
+    timeout_config = httpx.Timeout(
+        connect=30.0,    # Connection timeout
+        read=360.0,      # Read timeout (6 minutes)
+        write=30.0,      # Write timeout
+        pool=30.0        # Pool timeout
+    )
+    async with httpx.AsyncClient(timeout=timeout_config) as client:
         response = await client.post(
             os.environ.get("MANIM_ENDPOINT"),
-            json={"query": state.transcription}
+            json={"query": state["transcription"]}
         )
         if response.status_code == 200:
             video_data = response.json()
-            state.video_key = video_data.get("video_key", "")
-            state.video_data = await get_video(state.video_key)
+            state["video_key"] = video_data.get("video_key", "")
+            state["video_data"] = await get_video(state["video_key"])
         else:
             raise Exception(f"Failed to create video: {response.status_code} - {response.text}")
     
     return state
 
 def Stitching_node(state: State) -> State:
-    import subprocess
-    import tempfile
-    
-    # Write both video and audio bytes to temp files
-    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_video:
-        temp_video.write(state.video_data)
-        video_path = temp_video.name
-    
-    with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_audio:
-        temp_audio.write(state.audio_data)
-        audio_path = temp_audio.name
-    
+    import subprocess, tempfile, os
+
+    # Write video & audio bytes out to temp files
+    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tv:
+        tv.write(state["video_data"])
+        video_path = tv.name
+    with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as ta:
+        ta.write(state["audio_data"])
+        audio_path = ta.name
+
     try:
-        # Simple ffmpeg command with temp file inputs
-        command = [
+        video_size = os.path.getsize(video_path)
+        audio_size = os.path.getsize(audio_path)
+        print(f"Video size: {video_size}, Audio size: {audio_size}")
+        if not video_size or not audio_size:
+            raise Exception(f"Empty file: video={video_size}, audio={audio_size}")
+
+        cmd = [
             "ffmpeg", "-y",
-            "-i", video_path,           # Video from temp file
-            "-i", audio_path,           # Audio from temp file
-            "-c:v", "copy",             # Copy video codec
-            "-c:a", "aac",              # Encode audio as AAC
-            "-shortest",                # End when shortest stream ends
-            "-f", "mp4", "-"            # Output to stdout as bytes
+            "-i", video_path,
+            "-i", audio_path,
+            "-c:v", "copy",
+            "-c:a", "aac",
+            "-movflags", "+frag_keyframe+empty_moov",  # <-- enables streaming mp4
+            "-shortest",
+            "-f", "mp4",
+            "pipe:1"                                   # <-- write to stdout
         ]
-        
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            check=True
-        )
-        
-        state.final_video_data = result.stdout
-        
+        print("Running:", " ".join(cmd))
+        result = subprocess.run(cmd, capture_output=True, check=False)
+
+        if result.returncode != 0:
+            print("ffmpeg stderr:", result.stderr.decode())
+            print("ffmpeg stdout:", result.stdout.decode())
+            raise Exception(f"ffmpeg failed ({result.returncode})")
+
+        state["final_video_data"] = result.stdout
+        print(f"Final video bytes: {len(result.stdout)}")
+
     finally:
-        # Clean up both temp files
-        os.unlink(video_path)
-        os.unlink(audio_path)
-    
+        for p in (video_path, audio_path):
+            if os.path.exists(p):
+                os.unlink(p)
+
     return state
 
 async def upload_video_node(state: State) -> State:
     """upload the video to r2"""
     
-    result = await upload_video("final_video.mp4", state.final_video_data)
-    state.video_key = result["file_key"]
+    result = await upload_video("final_video.mp4", state["final_video_data"])
+    state["video_key"] = result["file_key"]
     
     return state
 
@@ -114,6 +128,10 @@ workflow.add_edge("upload_video", END)
 workflow.set_entry_point("retriever")
 
 orchestrator_agent = workflow.compile()
+
+if __name__ == "__main__":
+    response = retriever_node(State(query="What is transformers in attention?"))
+    print(response["transcription"])  # Access transcription directly
 
 
 

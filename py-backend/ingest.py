@@ -71,6 +71,17 @@ def upsert_to_qdrant(filename: str):
         return images_b64
 
     images = get_images_base64(chunks)
+    valid_images = []
+    for img in images:
+        try:
+            if img and len(img) > 0:
+                import base64
+                base64.b64decode(img)
+                valid_images.append(img)
+        except:
+            continue
+
+    images = valid_images
 
     prompt_text = """
     You are an assistant tasked with summarizing tables and text.
@@ -163,7 +174,12 @@ def upsert_to_qdrant(filename: str):
         points.append(point)
 
     for i, image_chunk in enumerate(images):
+        if i >= len(image_summaries):  # Skip if no summary available
+            continue
+    
         summary = image_summaries[i]  
+        if not summary or summary.strip() == "":  # Skip empty summaries
+            continue
         common_id = str(uuid4())
 
         vector = embed(summary)  
