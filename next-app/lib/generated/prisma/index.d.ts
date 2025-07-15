@@ -6973,6 +6973,7 @@ export namespace Prisma {
     id: string | null
     query: string | null
     videoUrl: string | null
+    title: string | null
     createdAt: Date | null
     updatedAt: Date | null
     userId: string | null
@@ -6982,6 +6983,7 @@ export namespace Prisma {
     id: string | null
     query: string | null
     videoUrl: string | null
+    title: string | null
     createdAt: Date | null
     updatedAt: Date | null
     userId: string | null
@@ -6991,6 +6993,7 @@ export namespace Prisma {
     id: number
     query: number
     videoUrl: number
+    title: number
     createdAt: number
     updatedAt: number
     userId: number
@@ -7002,6 +7005,7 @@ export namespace Prisma {
     id?: true
     query?: true
     videoUrl?: true
+    title?: true
     createdAt?: true
     updatedAt?: true
     userId?: true
@@ -7011,6 +7015,7 @@ export namespace Prisma {
     id?: true
     query?: true
     videoUrl?: true
+    title?: true
     createdAt?: true
     updatedAt?: true
     userId?: true
@@ -7020,6 +7025,7 @@ export namespace Prisma {
     id?: true
     query?: true
     videoUrl?: true
+    title?: true
     createdAt?: true
     updatedAt?: true
     userId?: true
@@ -7102,6 +7108,7 @@ export namespace Prisma {
     id: string
     query: string
     videoUrl: string
+    title: string | null
     createdAt: Date
     updatedAt: Date
     userId: string
@@ -7128,6 +7135,7 @@ export namespace Prisma {
     id?: boolean
     query?: boolean
     videoUrl?: boolean
+    title?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     userId?: boolean
@@ -7138,6 +7146,7 @@ export namespace Prisma {
     id?: boolean
     query?: boolean
     videoUrl?: boolean
+    title?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     userId?: boolean
@@ -7148,6 +7157,7 @@ export namespace Prisma {
     id?: boolean
     query?: boolean
     videoUrl?: boolean
+    title?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     userId?: boolean
@@ -7158,12 +7168,13 @@ export namespace Prisma {
     id?: boolean
     query?: boolean
     videoUrl?: boolean
+    title?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     userId?: boolean
   }
 
-  export type VideoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "query" | "videoUrl" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["video"]>
+  export type VideoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "query" | "videoUrl" | "title" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["video"]>
   export type VideoInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
   }
@@ -7183,6 +7194,7 @@ export namespace Prisma {
       id: string
       query: string
       videoUrl: string
+      title: string | null
       createdAt: Date
       updatedAt: Date
       userId: string
@@ -7613,6 +7625,7 @@ export namespace Prisma {
     readonly id: FieldRef<"Video", 'String'>
     readonly query: FieldRef<"Video", 'String'>
     readonly videoUrl: FieldRef<"Video", 'String'>
+    readonly title: FieldRef<"Video", 'String'>
     readonly createdAt: FieldRef<"Video", 'DateTime'>
     readonly updatedAt: FieldRef<"Video", 'DateTime'>
     readonly userId: FieldRef<"Video", 'String'>
@@ -8120,6 +8133,7 @@ export namespace Prisma {
     id: 'id',
     query: 'query',
     videoUrl: 'videoUrl',
+    title: 'title',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
     userId: 'userId'
@@ -8598,6 +8612,7 @@ export namespace Prisma {
     id?: StringFilter<"Video"> | string
     query?: StringFilter<"Video"> | string
     videoUrl?: StringFilter<"Video"> | string
+    title?: StringNullableFilter<"Video"> | string | null
     createdAt?: DateTimeFilter<"Video"> | Date | string
     updatedAt?: DateTimeFilter<"Video"> | Date | string
     userId?: StringFilter<"Video"> | string
@@ -8608,6 +8623,7 @@ export namespace Prisma {
     id?: SortOrder
     query?: SortOrder
     videoUrl?: SortOrder
+    title?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -8621,6 +8637,7 @@ export namespace Prisma {
     NOT?: VideoWhereInput | VideoWhereInput[]
     query?: StringFilter<"Video"> | string
     videoUrl?: StringFilter<"Video"> | string
+    title?: StringNullableFilter<"Video"> | string | null
     createdAt?: DateTimeFilter<"Video"> | Date | string
     updatedAt?: DateTimeFilter<"Video"> | Date | string
     userId?: StringFilter<"Video"> | string
@@ -8631,6 +8648,7 @@ export namespace Prisma {
     id?: SortOrder
     query?: SortOrder
     videoUrl?: SortOrder
+    title?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -8646,6 +8664,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"Video"> | string
     query?: StringWithAggregatesFilter<"Video"> | string
     videoUrl?: StringWithAggregatesFilter<"Video"> | string
+    title?: StringNullableWithAggregatesFilter<"Video"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Video"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Video"> | Date | string
     userId?: StringWithAggregatesFilter<"Video"> | string
@@ -9067,6 +9086,7 @@ export namespace Prisma {
     id?: string
     query: string
     videoUrl: string
+    title?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutVideosInput
@@ -9076,6 +9096,7 @@ export namespace Prisma {
     id?: string
     query: string
     videoUrl: string
+    title?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -9085,6 +9106,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     query?: StringFieldUpdateOperationsInput | string
     videoUrl?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutVideosNestedInput
@@ -9094,6 +9116,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     query?: StringFieldUpdateOperationsInput | string
     videoUrl?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string
@@ -9103,6 +9126,7 @@ export namespace Prisma {
     id?: string
     query: string
     videoUrl: string
+    title?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -9112,6 +9136,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     query?: StringFieldUpdateOperationsInput | string
     videoUrl?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -9120,6 +9145,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     query?: StringFieldUpdateOperationsInput | string
     videoUrl?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string
@@ -9514,6 +9540,7 @@ export namespace Prisma {
     id?: SortOrder
     query?: SortOrder
     videoUrl?: SortOrder
+    title?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -9523,6 +9550,7 @@ export namespace Prisma {
     id?: SortOrder
     query?: SortOrder
     videoUrl?: SortOrder
+    title?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -9532,6 +9560,7 @@ export namespace Prisma {
     id?: SortOrder
     query?: SortOrder
     videoUrl?: SortOrder
+    title?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -10067,6 +10096,7 @@ export namespace Prisma {
     id?: string
     query: string
     videoUrl: string
+    title?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -10075,6 +10105,7 @@ export namespace Prisma {
     id?: string
     query: string
     videoUrl: string
+    title?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -10207,6 +10238,7 @@ export namespace Prisma {
     id?: StringFilter<"Video"> | string
     query?: StringFilter<"Video"> | string
     videoUrl?: StringFilter<"Video"> | string
+    title?: StringNullableFilter<"Video"> | string | null
     createdAt?: DateTimeFilter<"Video"> | Date | string
     updatedAt?: DateTimeFilter<"Video"> | Date | string
     userId?: StringFilter<"Video"> | string
@@ -10523,6 +10555,7 @@ export namespace Prisma {
     id?: string
     query: string
     videoUrl: string
+    title?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -10636,6 +10669,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     query?: StringFieldUpdateOperationsInput | string
     videoUrl?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -10644,6 +10678,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     query?: StringFieldUpdateOperationsInput | string
     videoUrl?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -10652,6 +10687,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     query?: StringFieldUpdateOperationsInput | string
     videoUrl?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

@@ -181,6 +181,7 @@ exports.Prisma.VideoScalarFieldEnum = {
   id: 'id',
   query: 'query',
   videoUrl: 'videoUrl',
+  title: 'title',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   userId: 'userId'

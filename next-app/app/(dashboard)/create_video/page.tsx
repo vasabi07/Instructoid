@@ -3,7 +3,8 @@ import { db } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import CreateVideoForm from "./create-video-form";
-
+import OpenAI from "openai";
+import { title } from "process";
 const CreateVideo = async () => {
   const session = await auth.api.getSession({
     headers: await headers()
@@ -12,6 +13,9 @@ const CreateVideo = async () => {
   if (!session) {
     redirect("/auth/login");
   }
+  const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
   const createVideo = async (formData: FormData) => {
     "use server";
@@ -36,19 +40,34 @@ const CreateVideo = async () => {
       }
 
       const data = await res.json();
-      
+
+      const openai_response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+      { role: "system",  content: "You are a helpful assistant that crafts concise titles. return just the title." },
+      { role: "user",    content: `Create a short title for: ${query}` },
+            ],
+    max_tokens: 12,
+        });
+
+      let title = "";
+      if (openai_response.choices.length > 0) {
+        const titleContent = openai_response.choices[0].message.content;
+        title = titleContent ? titleContent.trim() : "";
+      }
       // Save to database with user session
       await db.video.create({
         data: {
           query: query,
           videoUrl: data.video_key,
+          title: title,
           userId: session.user.id,
         },
       });
 
       return { success: true, data };
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "An error occurred");
+      return { success: false, data: { error: error instanceof Error ? error.message : "An error occurred" } };
     }
   };
 
