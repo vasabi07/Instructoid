@@ -1,6 +1,6 @@
 "use server"
 import { r2 } from "@/lib/r2Client"
-import { PutObjectCommand } from "@aws-sdk/client-s3"
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3"
 import {getSignedUrl} from "@aws-sdk/s3-request-presigner"
 import { auth } from "@/lib/auth";     
 import { headers } from "next/headers";
@@ -51,5 +51,66 @@ export const saveDocument = async (file_name: string, file_key: string, file_siz
     })
 
     return document;
+}
+
+export const stream_video = async (video_id: string) => {
+    const session  = await auth.api.getSession({
+        headers:await headers()
+    })
+    if (!session) {
+        return {"message": "Unauthorized"};
+    }
+    const user_id = session.user.id;
+    const video = await db.video.findFirst({
+        where: {
+            id: video_id,
+            userId: user_id
+        }
+    })
+
+    if (!video) {
+        return {"message": "Video not found or unauthorized"};
+    }
+    const file_key = video.videoUrl;
+    const signedUrl = await getSignedUrl(r2, new GetObjectCommand({
+        Bucket: process.env.R2_BUCKET,
+        Key: file_key
+    }), {
+        expiresIn: 60 * 60 // 1 hour
+    });
+
+
+    return signedUrl
+}
+
+export const download_video = async (video_id: string) => {
+    const session  = await auth.api.getSession({
+        headers:await headers()
+    })
+    if (!session) {
+        return {"message": "Unauthorized"};
+    }
+    const user_id = session.user.id;
+    const video = await db.video.findFirst({
+        where: {
+            id: video_id,
+            userId: user_id
+        }
+    })
+
+    if (!video) {
+        return {"message": "Video not found or unauthorized"};
+    }
+    const file_key = video.videoUrl;
+    const safeName = (video.title ? video.title.replace(/[^a-zA-Z0-9.\-_]/g, "_") : "video") + ".mp4"; 
+    const signedUrl = await getSignedUrl(r2, new GetObjectCommand({
+        Bucket: process.env.R2_BUCKET,
+        Key: file_key,
+        ResponseContentDisposition: `attachment; filename="${safeName}"`,
+    }), {
+        expiresIn: 60 * 60 // 1 hour
+    });
+
+    return signedUrl;
 }
 
