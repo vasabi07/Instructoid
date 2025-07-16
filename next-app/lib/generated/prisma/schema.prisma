@@ -100,3 +100,12 @@ model Video {
 
   @@map("video")
 }
+
+model Jwks {
+  id         String   @id @default(uuid())
+  publicKey  String
+  privateKey String
+  createdAt  DateTime @default(now())
+
+  @@map("jwks")
+}

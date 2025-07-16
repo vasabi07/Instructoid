@@ -1,33 +1,101 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { getSession } from "@/lib/auth-client";
 
-interface CreateVideoFormProps {
-  createVideoAction: (formData: FormData) => Promise<{ success: boolean; data: any }>;
-}
-
-const CreateVideoForm = ({ createVideoAction }: CreateVideoFormProps) => {
+const CreateVideoForm = () => {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setError(null);
     setResponse(null);
+    setIsLoading(true);
 
-    startTransition(async () => {
-      try {
-        const result = await createVideoAction(formData);
-        setResponse(result.data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      }
-    });
+    const formData = new FormData(e.currentTarget);
+    const query = formData.get("query") as string;
+
+    if (!query?.trim()) {
+      setError("Please enter a query");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Get session and JWT token using Method 2
+      await getSession({
+        fetchOptions: {
+          onSuccess: async (ctx) => {
+            const jwt = ctx.response.headers.get("set-auth-jwt");
+            
+            if (!jwt) {
+              setError("Failed to get authentication token");
+              setIsLoading(false);
+              return;
+            }
+
+            try {
+              // Call Python backend with JWT
+              const res = await fetch("http://0.0.0.0:8000/create-video", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${jwt}`,
+                },
+                body: JSON.stringify({ query }),
+              });
+
+              if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+              }
+
+              const data = await res.json();
+
+              // Call Next.js API to generate title and save to DB
+              const saveRes = await fetch("/api/videos/save", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  query,
+                  video_key: data.video_key,
+                }),
+              });
+
+              if (!saveRes.ok) {
+                throw new Error("Failed to save video metadata");
+              }
+
+              const saveData = await saveRes.json();
+              setResponse({ ...data, ...saveData });
+              
+              // Reset form
+              e.currentTarget.reset();
+              
+            } catch (fetchErr) {
+              setError("Error creating video: " + (fetchErr instanceof Error ? fetchErr.message : "Unknown error"));
+            } finally {
+              setIsLoading(false);
+            }
+          },
+          onError: () => {
+            setError("Failed to get session");
+            setIsLoading(false);
+          }
+        },
+      });
+    } catch (err) {
+      setError("Authentication error: " + (err instanceof Error ? err.message : "Unknown error"));
+      setIsLoading(false);
+    }
   };
 
   return (
     <>
-      <form action={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label
             htmlFor="query"
@@ -40,17 +108,17 @@ const CreateVideoForm = ({ createVideoAction }: CreateVideoFormProps) => {
             name="query"
             placeholder="Describe the video you want to create..."
             className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none h-32"
-            disabled={isPending}
+            disabled={isLoading}
             required
           />
         </div>
         
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isLoading}
           className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isPending ? (
+          {isLoading ? (
             <div className="flex items-center justify-center">
               <svg
                 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
