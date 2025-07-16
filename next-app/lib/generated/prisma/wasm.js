@@ -187,6 +187,13 @@ exports.Prisma.VideoScalarFieldEnum = {
   userId: 'userId'
 };
 
+exports.Prisma.JwksScalarFieldEnum = {
+  id: 'id',
+  publicKey: 'publicKey',
+  privateKey: 'privateKey',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -209,7 +216,8 @@ exports.Prisma.ModelName = {
   Account: 'Account',
   Verification: 'Verification',
   Document: 'Document',
-  Video: 'Video'
+  Video: 'Video',
+  Jwks: 'Jwks'
 };
 
 /**
