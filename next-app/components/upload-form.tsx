@@ -3,7 +3,7 @@
 import { getSignedURL, saveDocument } from "@/app/create/actions";
 import { getSession } from "@/lib/auth-client";
 import { useEffect, useState } from "react";
-
+//issue: record and upload file to r2 happens even if the ingestion fails in python backend
 const UploadForm = () => {
   const [file, setFile] = useState<File | undefined>(undefined);
   const [url, setUrl] = useState<string | undefined>(undefined);
