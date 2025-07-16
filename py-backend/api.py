@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from ingest import upsert_to_qdrant
 from pydantic import BaseModel
@@ -7,29 +7,40 @@ from langchain_core.messages import HumanMessage
 app = FastAPI()
 from retriever import retriever
 from main import orchestrator_agent
+from utils.authMiddleware import AuthMiddleware
+import requests
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins, or specify a list of allowed origins
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Be more specific
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 class IngestRequest(BaseModel):
     file_key: str  
     
-class Request(BaseModel):
+class VideoRequest(BaseModel):
     query: str
+
+app.add_middleware(AuthMiddleware)
+
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Instructoid API!"}
 
+
 @app.post("/ingest")
-async def ingest(request: IngestRequest):
+async def ingest(request_data: IngestRequest, request: Request):
     """havent handled the response in client side"""
-    file_key = request.file_key
+    # Get user from middleware
+    user = request.state.user
+    print(f"JWT payload: {user}")  # See what's actually in there
+    user_id = user.get("sub") if user else None
+    
+    file_key = request_data.file_key
     if not file_key:
         return {"error": "file_key is required in the request body."}
     filename = await get_file(file_key)
@@ -37,33 +48,41 @@ async def ingest(request: IngestRequest):
         return {"error": "Failed to retrieve the file."}
     ingestion_status = upsert_to_qdrant(filename)
     if ingestion_status:
-        return {"message": "File ingested successfully.", "file": filename}
+        return {"message": "File ingested successfully.", "file": filename, "user_id": user_id}
     else:
         return {"error": "Failed to ingest the file."}
     
 @app.post("/chat")
-async def chat(query: str):
+async def chat(query: str, request: Request):
     """Handles the chat query and returns the response."""
+    # Get user from middleware
+    user = request.state.user
+    user_id = user.get("sub") if user else None
+    
     if not query:
         return {"error": "Query is required."}
     
-    
     response = retriever(query)
     
-    return {"response": response}
+    return {"response": response, "user_id": user_id}
 @app.post("/create-video")
-async def create_video(request: Request):
+async def create_video(video_request: VideoRequest, request: Request):
     """Handles the video creation request."""
-    if not request.query:
+    # Get user from middleware
+    user = request.state.user
+    user_id = user.get("sub") if user else None
+    
+    if not video_request.query:
         return {"error": "Query is required."}
-    print(request.query)
+    print(f"Creating video for user {user_id}: {video_request.query}")
+    
     initial_state = {
-        "query": request.query,
+        "query": video_request.query,
         "messages": []  # Empty messages list for MessagesState
     }
     response = await orchestrator_agent.ainvoke(initial_state)
     print(response["video_key"])
-    return {"video_key": response["video_key"], "message": "Video created successfully."}
+    return {"video_key": response["video_key"], "message": "Video created successfully.", "user_id": user_id}
     
 
 if __name__ == "__main__":
