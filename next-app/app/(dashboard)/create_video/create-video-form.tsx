@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getSession } from "@/lib/auth-client";
-
+import {createVideoFormSchema} from "@/lib/z"
 const CreateVideoForm = () => {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -15,16 +15,22 @@ const CreateVideoForm = () => {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const query = formData.get("query") as string;
+    const validationResult = createVideoFormSchema.safeParse({
+    query: formData.get("query"),
+    aspectRatio: formData.get("aspectRatio"),
+    videoLength: parseInt(formData.get("videoLength") as string) || 30,
+  });
 
-    if (!query?.trim()) {
-      setError("Please enter a query");
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map(issue => issue.message).join(", ");
+      setError(errors);
       setIsLoading(false);
       return;
     }
 
+    const validatedData = validationResult.data;
+
     try {
-      // Get session and JWT token using Method 2
       await getSession({
         fetchOptions: {
           onSuccess: async (ctx) => {
@@ -44,7 +50,11 @@ const CreateVideoForm = () => {
                   "Content-Type": "application/json",
                   "Authorization": `Bearer ${jwt}`,
                 },
-                body: JSON.stringify({ query }),
+                body: JSON.stringify({ 
+                  query: validatedData.query,
+                  aspect_ratio: validatedData.aspectRatio,
+                  video_length: validatedData.videoLength
+                }),
               });
 
               if (!res.ok) {
@@ -60,7 +70,7 @@ const CreateVideoForm = () => {
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                  query,
+                  query: validatedData.query,
                   video_key: data.video_key,
                 }),
               });
@@ -72,7 +82,6 @@ const CreateVideoForm = () => {
               const saveData = await saveRes.json();
               setResponse({ ...data, ...saveData });
               
-              // Reset form
               e.currentTarget.reset();
               
             } catch (fetchErr) {
@@ -111,6 +120,51 @@ const CreateVideoForm = () => {
             disabled={isLoading}
             required
           />
+        </div>
+
+        <div>
+          <label
+            htmlFor="aspectRatio"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Aspect Ratio
+          </label>
+          <select
+            id="aspectRatio"
+            name="aspectRatio"
+            className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            disabled={isLoading}
+            required
+            defaultValue=""
+          >
+            <option value="" disabled>Select aspect ratio</option>
+            <option value="16:9">Horizontal (Youtube video)</option>
+            <option value="9:16">Vertical (Shorts)</option>
+            <option value="1:1">Vertical (Instagram)</option>
+          </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor="videoLength"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Video Length (seconds)
+          </label>
+          <input
+            type="number"
+            id="videoLength"
+            name="videoLength"
+            min="10"
+            max="300"
+            defaultValue="30"
+            placeholder="30"
+            className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            disabled={isLoading}
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Duration between 10-300 seconds (default: 30)
+          </p>
         </div>
         
         <button

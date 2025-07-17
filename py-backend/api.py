@@ -23,6 +23,8 @@ class IngestRequest(BaseModel):
     
 class VideoRequest(BaseModel):
     query: str
+    aspect_ratio: str = "horizontal"  # default to horizontal
+    video_length: int = 30  # default to 30 seconds
 
 app.add_middleware(AuthMiddleware)
 
@@ -37,7 +39,6 @@ async def ingest(request_data: IngestRequest, request: Request):
     """havent handled the response in client side"""
     # Get user from middleware
     user = request.state.user
-    print(f"JWT payload: {user}")  # See what's actually in there
     user_id = user.get("sub") if user else None
     
     file_key = request_data.file_key
@@ -74,15 +75,25 @@ async def create_video(video_request: VideoRequest, request: Request):
     
     if not video_request.query:
         return {"error": "Query is required."}
+    
     print(f"Creating video for user {user_id}: {video_request.query}")
+    print(f"Aspect ratio: {video_request.aspect_ratio}, Length: {video_request.video_length}s")
     
     initial_state = {
         "query": video_request.query,
-        "messages": []  # Empty messages list for MessagesState
+        "aspect_ratio": video_request.aspect_ratio,
+        "video_length": video_request.video_length,
+        "messages": []  
     }
     response = await orchestrator_agent.ainvoke(initial_state)
     print(response["video_key"])
-    return {"video_key": response["video_key"], "message": "Video created successfully.", "user_id": user_id}
+    return {
+        "video_key": response["video_key"], 
+        "message": "Video created successfully.", 
+        "user_id": user_id,
+        "aspect_ratio": video_request.aspect_ratio,
+        "video_length": video_request.video_length
+    }
     
 
 if __name__ == "__main__":
