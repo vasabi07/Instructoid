@@ -31,7 +31,7 @@ client = QdrantClient(
  
 
 
-def upsert_to_qdrant(filename: str):
+def upsert_to_qdrant(filename: str,user_id: str):
     output_path = "./content/"
     file_path = output_path + filename
     chunks = partition_pdf(
@@ -144,7 +144,7 @@ def upsert_to_qdrant(filename: str):
                 "common_id": common_id,
                 "summary": summary,
                 "full_text": text_chunk.text,
-                "user_id": "user-xyz",  
+                "user_id": user_id,  
                 "page_num": text_chunk.metadata.page_number,
                 "doc_type": "text",
             }

@@ -12,7 +12,7 @@ import requests
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Be more specific
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -23,7 +23,7 @@ class IngestRequest(BaseModel):
     
 class VideoRequest(BaseModel):
     query: str
-    aspect_ratio: str = "horizontal"  # default to horizontal
+    aspect_ratio: str = "16:9"  # default to horizontal
     video_length: int = 30  # default to 30 seconds
 
 app.add_middleware(AuthMiddleware)
@@ -44,10 +44,10 @@ async def ingest(request_data: IngestRequest, request: Request):
     file_key = request_data.file_key
     if not file_key:
         return {"error": "file_key is required in the request body."}
-    filename = await get_file(file_key)
+    filename = await get_file(file_key) 
     if not filename:
         return {"error": "Failed to retrieve the file."}
-    ingestion_status = upsert_to_qdrant(filename)
+    ingestion_status = upsert_to_qdrant(filename, user_id)
     if ingestion_status:
         return {"message": "File ingested successfully.", "file": filename, "user_id": user_id}
     else:

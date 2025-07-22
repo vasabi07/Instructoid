@@ -16,11 +16,13 @@ class State(MessagesState):
     audio_data: bytes = b""
     final_video_data: bytes = b""
     video_key: str = ""
+    aspect_ratio: str = "16:9"  
+    video_length: int = 30  
 
 
 #retriever_node
 def retriever_node(state: State) -> State:
-    response = retriever(state["query"])
+    response = retriever(state["query"], time=state["video_length"])
     state["transcription"] = response.content
 
     return state
@@ -48,7 +50,7 @@ async def  manim_node(state: State) -> State:
     async with httpx.AsyncClient(timeout=timeout_config) as client:
         response = await client.post(
             os.environ.get("MANIM_ENDPOINT"),
-            json={"query": state["transcription"]}
+            json={"query": state["transcription"], "aspect_ratio": state["aspect_ratio"], "video_length": state["video_length"]}
         )
         if response.status_code == 200:
             video_data = response.json()
