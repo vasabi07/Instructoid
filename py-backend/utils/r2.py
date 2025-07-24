@@ -83,10 +83,21 @@ async def upload_video(filename: str, video_data: bytes, expires_in: int = 3600)
         ExpiresIn=expires_in
     )
     
-    async with httpx.AsyncClient() as client:
+    # Create HTTP client with longer timeout for large video uploads
+    timeout_config = httpx.Timeout(
+        connect=30.0,     # Connection timeout
+        read=300.0,       # Read timeout (5 minutes)
+        write=300.0,      # Write timeout (5 minutes) - important for uploads
+        pool=30.0         # Pool timeout
+    )
+    
+    async with httpx.AsyncClient(timeout=timeout_config) as client:
+        print(f"Uploading video: {len(video_data)} bytes")
         response = await client.put(signed_url, content=video_data)
         
     if response.status_code == 200:
+        print(f"✅ Video uploaded successfully: {file_key}")
         return {"status": "success", "file_key": file_key, "message": f"Video uploaded successfully to {file_key}"}
     else:
+        print(f"❌ Upload failed: {response.status_code} - {response.text}")
         raise Exception(f"Failed to upload video: {response.status_code} - {response.text}")

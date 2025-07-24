@@ -31,7 +31,7 @@ client = QdrantClient(
  
 
 
-def upsert_to_qdrant(filename: str,user_id: str):
+def upsert_to_qdrant(filename: str,user_id: str = "123"):
     output_path = "./content/"
     file_path = output_path + filename
     chunks = partition_pdf(
