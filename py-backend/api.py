@@ -6,9 +6,11 @@ from utils.r2 import get_file
 from langchain_core.messages import HumanMessage
 app = FastAPI()
 from retriever import retriever
-from main import orchestrator_agent
+from main import orchestrator_agent, OrchestratorState
+from creative_agent import creative_agent, CreativeOrchestratorState
 from utils.authMiddleware import AuthMiddleware
 import requests
+from test_main import agent
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -66,8 +68,8 @@ async def chat(query: str, request: Request):
     response = retriever(query)
     
     return {"response": response, "user_id": user_id}
-@app.post("/create-video")
-async def create_video(video_request: VideoRequest, request: Request):
+# @app.post("/create-video")
+# async def create_video(video_request: VideoRequest, request: Request):
     """Handles the video creation request."""
     # Get user from middleware
     user = request.state.user
@@ -79,12 +81,14 @@ async def create_video(video_request: VideoRequest, request: Request):
     print(f"Creating video for user {user_id}: {video_request.query}")
     print(f"Aspect ratio: {video_request.aspect_ratio}, Length: {video_request.video_length}s")
     
-    initial_state = {
-        "query": video_request.query,
-        "aspect_ratio": video_request.aspect_ratio,
-        "video_length": video_request.video_length,
-        "messages": []  
-    }
+    # Create a proper State object instead of a dictionary
+    initial_state = OrchestratorState(
+        query=video_request.query,
+        aspect_ratio=video_request.aspect_ratio,
+        video_length=video_request.video_length,
+        messages=[]  
+    )
+    
     response = await orchestrator_agent.ainvoke(initial_state)
     print(response["video_key"])
     return {
@@ -93,6 +97,37 @@ async def create_video(video_request: VideoRequest, request: Request):
         "user_id": user_id,
         "aspect_ratio": video_request.aspect_ratio,
         "video_length": video_request.video_length
+    }
+@app.post("/create-video")
+async def create_creative_video(video_request: VideoRequest, request: Request):
+    """Handles the creative video creation request without user documents."""
+    # Get user from middleware
+    user = request.state.user
+    user_id = user.get("sub") if user else None
+    
+    if not video_request.query:
+        return {"error": "Query is required."}
+    
+    print(f"Creating CREATIVE video for user {user_id}: {video_request.query}")
+    print(f"Aspect ratio: {video_request.aspect_ratio}, Length: {video_request.video_length}s")
+    
+    # Create a proper State object for creative agent (same structure as OrchestratorState)
+    initial_state = CreativeOrchestratorState(
+        query=video_request.query,
+        aspect_ratio=video_request.aspect_ratio,
+        video_length=video_request.video_length,
+        messages=[]  
+    )
+    
+    response = await creative_agent.ainvoke(initial_state)
+    print("Creative video key:", response["video_key"])
+    return {
+        "video_key": response["video_key"], 
+        "message": "Creative video created successfully.", 
+        "user_id": user_id,
+        "aspect_ratio": video_request.aspect_ratio,
+        "video_length": video_request.video_length,
+        "type": "creative"
     }
     
 
